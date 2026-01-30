@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workout Planner</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --card:#121a22;
+      --muted:#7f93a6;
+      --text:#e7eef6;
+      --accent:#4aa3ff;
+      --ok:#3ddc97;
+      --danger:#ff5d5d;
+      --border:rgba(255,255,255,.08);
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius:16px;
+      --tap:48px;
+    }
+    *{box-sizing:border-box}
+    html, body{min-height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(74,163,255,.12), transparent 60%),
+                  radial-gradient(1000px 700px at 80% 20%, rgba(61,220,151,.10), transparent 60%),
+                  var(--bg);
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      color:var(--text);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      background: rgba(11,15,20,.8);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--border);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:14px 14px 24px;}
+    .topbar{
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+    }
+    .title{
+      display:flex; flex-direction:column; gap:2px;
+      min-width: 0;
+    }
+    h1{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .sub{
+      font-size:12px; color:var(--muted);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    .btn{
+      appearance:none; border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color:var(--text);
+      border-radius: 12px;
+      height: var(--tap);
+      padding: 0 14px;
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:10px;
+      cursor:pointer;
+      box-shadow: none;
+      transition:.12s transform ease, .12s background ease, .12s border ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      font-weight:600;
+    }
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{background: rgba(74,163,255,.14); border-color: rgba(74,163,255,.35)}
+    .btn.danger{background: rgba(255,93,93,.14); border-color: rgba(255,93,93,.35)}
+    .btn.ok{background: rgba(61,220,151,.14); border-color: rgba(61,220,151,.35)}
+    .btn.ghost{background: transparent}
+    .btn.small{height:40px; padding:0 12px; border-radius: 12px; font-weight:600}
+    .btn.icon{width:var(--tap); padding:0}
+    .pill{
+      font-size:12px; color:var(--muted);
+      border:1px solid var(--border);
+      padding: 8px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.03);
+      display:inline-flex; align-items:center; gap:8px;
+    }
+
+    main .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+      margin-top:14px;
+    }
+    @media (max-width: 900px){
+      main .grid{grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: rgba(18,26,34,.75);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card h2{
+      margin:0;
+      font-size:14px;
+      color: var(--muted);
+      letter-spacing:.3px;
+      text-transform: uppercase;
+    }
+    .card-head{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 12px;
+      border-bottom:1px solid var(--border);
+      gap:10px;
+    }
+    .card-body{padding:12px}
+    .muted{color:var(--muted)}
+    .sep{height:1px; background:var(--border); margin:10px 0}
+
+    /* Calendar */
+    .cal-head{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .month-label{
+      font-size:16px; font-weight:800;
+      letter-spacing:.2px;
+    }
+    .dow{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap:8px;
+      padding: 10px 12px 0;
+      color: var(--muted);
+      font-size:12px;
+    }
+    .cal-grid{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap:8px;
+      padding: 10px 12px 12px;
+    }
+    .day{
+      min-height: 86px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      padding: 10px;
+      cursor:pointer;
+      display:flex; flex-direction:column; gap:8px;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      overflow:hidden;
+    }
+    .day:hover{border-color: rgba(255,255,255,.14)}
+    .day.dim{opacity:.45}
+    .day.sel{outline: 2px solid rgba(74,163,255,.55); border-color: rgba(74,163,255,.35)}
+    .day .num{
+      font-weight:900;
+      font-size:13px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .today-dot{
+      width:10px; height:10px; border-radius:999px;
+      background: rgba(74,163,255,.9);
+      box-shadow: 0 0 0 4px rgba(74,163,255,.18);
+    }
+    .badges{display:flex; gap:6px; flex-wrap:wrap}
+    .badge{
+      font-size:11px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      max-width: 100%;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .badge.done{border-color: rgba(61,220,151,.35); background: rgba(61,220,151,.12)}
+    .badge.pending{border-color: rgba(74,163,255,.35); background: rgba(74,163,255,.10)}
+
+    /* Right panel */
+    .day-title{
+      font-size:16px; font-weight:900; margin:0;
+    }
+    .list{display:flex; flex-direction:column; gap:10px}
+    .item{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      border-radius: 14px;
+      padding: 10px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .item-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+    .item-name{font-weight:900}
+    .item-desc{font-size:12px; color:var(--muted); line-height:1.35}
+    .item-actions{display:flex; gap:8px; flex-wrap:wrap}
+    .check{
+      display:flex; align-items:center; gap:10px;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input[type="checkbox"]{
+      width:22px; height:22px;
+      accent-color: var(--ok);
+    }
+
+    /* Forms */
+    .form{display:flex; flex-direction:column; gap:10px}
+    label{font-size:12px; color:var(--muted)}
+    input[type="text"], textarea, input[type="date"]{
+      width:100%;
+      border-radius: 12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      padding: 12px 12px;
+      outline:none;
+      font-size:16px;
+    }
+    textarea{min-height:72px; resize: vertical}
+    .weekday{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap:8px;
+    }
+    .wbtn{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      border-radius: 12px;
+      height: 42px;
+      cursor:pointer;
+      font-weight:800;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wbtn.on{
+      border-color: rgba(74,163,255,.40);
+      background: rgba(74,163,255,.14);
+    }
+
+    .footer-note{font-size:12px; color:var(--muted); line-height:1.35}
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: var(--text);
+    }
+    .hidden{display:none !important}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <h1>Workout Planner</h1>
+        <div class="sub">Kalender • Workouts planen • abhaken • alles lokal gespeichert</div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="btnNew">+ Workout</button>
+        <button class="btn ghost" id="btnExport" title="Daten exportieren">Export</button>
+        <button class="btn ghost" id="btnImport" title="Daten importieren">Import</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="grid">
+      <!-- Calendar -->
+      <section class="card">
+        <div class="card-head">
+          <div class="cal-head">
+            <button class="btn icon" id="prevMonth" aria-label="Vorheriger Monat">‹</button>
+            <div>
+              <div class="month-label" id="monthLabel">–</div>
+              <div class="muted" style="font-size:12px" id="monthHint">Tippe auf einen Tag</div>
+            </div>
+            <button class="btn icon" id="nextMonth" aria-label="Nächster Monat">›</button>
+          </div>
+          <div class="pill" id="statsPill">–</div>
+        </div>
+        <div class="dow" id="dow"></div>
+        <div class="cal-grid" id="cal"></div>
+      </section>
+
+      <!-- Day details + workout editor -->
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2>Tag</h2>
+            <p class="day-title" id="dayTitle">–</p>
+          </div>
+          <div class="row">
+            <button class="btn small ok" id="btnMarkAll">Alles erledigt</button>
+            <button class="btn small" id="btnAddToDay">+ Zu Tag</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="dayPanel">
+            <div class="list" id="dayList"></div>
+            <div class="sep"></div>
+            <div class="footer-note">
+              <div><span class="kbd">+ Zu Tag</span> trägt ein bestehendes Workout nur für dieses Datum ein.</div>
+              <div><span class="kbd">Wochentage</span> planen wiederkehrend (z. B. Mo/Mi/Fr).</div>
+            </div>
+          </div>
+
+          <div id="editorPanel" class="hidden">
+            <h2 style="margin-bottom:10px">Workout Editor</h2>
+            <form class="form" id="workoutForm">
+              <div>
+                <label for="wName">Name</label>
+                <input id="wName" type="text" placeholder="z. B. Ganzkörper, Laufen, Mobility" required />
+              </div>
+              <div>
+                <label for="wDesc">Notizen (optional)</label>
+                <textarea id="wDesc" placeholder="z. B. 3x10 Kniebeugen, 20 min Zone-2, …"></textarea>
+              </div>
+
+              <div>
+                <label>Wochentage (optional, wiederkehrend)</label>
+                <div class="weekday" id="weekdayPicker"></div>
+              </div>
+
+              <div>
+                <label for="wDates">Einzeldaten (optional, mehrere möglich)</label>
+                <div class="row" style="align-items:center">
+                  <input id="wDateInput" type="date" />
+                  <button class="btn small" type="button" id="btnAddDate">Datum hinzufügen</button>
+                </div>
+                <div class="row" id="dateChips"></div>
+              </div>
+
+              <div class="row" style="justify-content:space-between; margin-top:4px">
+                <button class="btn" type="button" id="btnCancel">Abbrechen</button>
+                <div class="row">
+                  <button class="btn danger" type="button" id="btnDelete">Löschen</button>
+                  <button class="btn primary" type="submit" id="btnSave">Speichern</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+  // ---------- Storage ----------
+  const KEY = "workout_planner_v1";
+
+  function loadState(){
+    const raw = localStorage.getItem(KEY);
+    if(!raw){
+      return {
+        workouts: [
+          // Beispiel-Workouts (kannst du löschen)
+          { id: uid(), name: "Ganzkörper", desc: "3 Übungen • moderat", weekdays: [1,3,5], dates: [] },
+          { id: uid(), name: "LIT Cardio", desc: "Zone-2 • 30–45 min", weekdays: [2,4], dates: [] },
+          { id: uid(), name: "Mobility", desc: "10–15 min", weekdays: [0], dates: [] },
+        ],
+        // completions: { "YYYY-MM-DD": { "<workoutId>": true } }
+        completions: {},
+        // extra day assignments: { "YYYY-MM-DD": ["workoutId", ...] }
+        dayAdds: {}
+      };
+    }
+    try{
+      const s = JSON.parse(raw);
+      // Minimal migrations / defaults
+      s.workouts ??= [];
+      s.completions ??= {};
+      s.dayAdds ??= {};
+      return s;
+    }catch(e){
+      console.warn("State konnte nicht gelesen werden:", e);
+      return { workouts: [], completions: {}, dayAdds: {} };
+    }
+  }
+
+  function saveState(){
+    localStorage.setItem(KEY, JSON.stringify(state));
+  }
+
+  function uid(){
+    return Math.random().toString(16).slice(2) + Date.now().toString(16);
+  }
+
+  function fmtDateISO(d){
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function parseISO(iso){
+    const [y,m,d] = iso.split("-").map(Number);
+    return new Date(y, m-1, d);
+  }
+
+  function startOfMonth(d){
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  }
+
+  function endOfMonth(d){
+    return new Date(d.getFullYear(), d.getMonth()+1, 0);
+  }
+
+  function sameDay(a,b){
+    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  }
+
+  // ---------- App State ----------
+  let state = loadState();
+
+  // current month and selected date
+  let viewDate = new Date(); // month shown
+  let selectedDate = new Date(); // day selected
+  let editingId = null;
+
+  // ---------- DOM ----------
+  const elMonthLabel = document.getElementById("monthLabel");
+  const elCal = document.getElementById("cal");
+  const elDow = document.getElementById("dow");
+  const elDayTitle = document.getElementById("dayTitle");
+  const elDayList = document.getElementById("dayList");
+  const elStatsPill = document.getElementById("statsPill");
+
+  const btnPrev = document.getElementById("prevMonth");
+  const btnNext = document.getElementById("nextMonth");
+  const btnNew = document.getElementById("btnNew");
+  const btnExport = document.getElementById("btnExport");
+  const btnImport = document.getElementById("btnImport");
+  const btnMarkAll = document.getElementById("btnMarkAll");
+  const btnAddToDay = document.getElementById("btnAddToDay");
+
+  const dayPanel = document.getElementById("dayPanel");
+  const editorPanel = document.getElementById("editorPanel");
+
+  const form = document.getElementById("workoutForm");
+  const wName = document.getElementById("wName");
+  const wDesc = document.getElementById("wDesc");
+  const weekdayPicker = document.getElementById("weekdayPicker");
+
+  const wDateInput = document.getElementById("wDateInput");
+  const btnAddDate = document.getElementById("btnAddDate");
+  const dateChips = document.getElementById("dateChips");
+
+  const btnCancel = document.getElementById("btnCancel");
+  const btnDelete = document.getElementById("btnDelete");
+
+  const DOW = [
+    {i:1, short:"Mo"}, {i:2, short:"Di"}, {i:3, short:"Mi"},
+    {i:4, short:"Do"}, {i:5, short:"Fr"}, {i:6, short:"Sa"}, {i:0, short:"So"}
+  ];
+
+  // ---------- Render Helpers ----------
+  function monthName(d){
+    return d.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  }
+
+  function dayNameLong(d){
+    return d.toLocaleDateString("de-DE", { weekday: "long", day:"2-digit", month:"2-digit", year:"numeric" });
+  }
+
+  function getWorkoutsForDate(dateObj){
+    const iso = fmtDateISO(dateObj);
+    const dow = dateObj.getDay(); // 0=Sun
+    const byRecurring = state.workouts.filter(w => (w.weekdays||[]).includes(dow));
+    const byDates = state.workouts.filter(w => (w.dates||[]).includes(iso));
+    const byDayAdds = (state.dayAdds[iso] || []).map(id => state.workouts.find(w => w.id===id)).filter(Boolean);
+
+    // merge unique by id
+    const map = new Map();
+    [...byRecurring, ...byDates, ...byDayAdds].forEach(w => map.set(w.id, w));
+    return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,"de"));
+  }
+
+  function isDone(iso, workoutId){
+    return !!(state.completions?.[iso]?.[workoutId]);
+  }
+
+  function setDone(iso, workoutId, done){
+    state.completions[iso] ??= {};
+    if(done) state.completions[iso][workoutId] = true;
+    else delete state.completions[iso][workoutId];
+    // cleanup empties
+    if(Object.keys(state.completions[iso]).length===0) delete state.completions[iso];
+    saveState();
+  }
+
+  function dayProgress(iso){
+    const w = getWorkoutsForDate(parseISO(iso));
+    if(w.length===0) return {done:0,total:0};
+    const done = w.filter(x=>isDone(iso,x.id)).length;
+    return {done, total:w.length};
+  }
+
+  function renderDow(){
+    elDow.innerHTML = "";
+    DOW.forEach(d=>{
+      const div = document.createElement("div");
+      div.textContent = d.short;
+      elDow.appendChild(div);
+    });
+  }
+
+  function renderCalendar(){
+    const now = new Date();
+    const m0 = startOfMonth(viewDate);
+    const m1 = endOfMonth(viewDate);
+
+    elMonthLabel.textContent = monthName(viewDate);
+
+    // stats (month)
+    const first = new Date(m0);
+    const last = new Date(m1);
+    let planned=0, done=0;
+
+    // calendar grid with Monday-start
+    // Determine offset: convert JS day (Sun=0) to Monday=0 index
+    const firstDay = m0.getDay(); // 0..6
+    const offset = (firstDay + 6) % 7; // Monday-start offset
+
+    elCal.innerHTML = "";
+
+    // preceding days
+    for(let i=0;i<offset;i++){
+      const d = new Date(m0);
+      d.setDate(d.getDate() - (offset - i));
+      elCal.appendChild(renderDayCell(d, true));
+    }
+    // month days
+    for(let day=1; day<=m1.getDate(); day++){
+      const d = new Date(m0.getFullYear(), m0.getMonth(), day);
+      elCal.appendChild(renderDayCell(d, false));
+
+      const iso = fmtDateISO(d);
+      const w = getWorkoutsForDate(d);
+      planned += w.length;
+      done += w.filter(x=>isDone(iso,x.id)).length;
+    }
+    // trailing days to complete weeks
+    const totalCells = offset + m1.getDate();
+    const trailing = (7 - (totalCells % 7)) % 7;
+    for(let i=1;i<=trailing;i++){
+      const d = new Date(m1);
+      d.setDate(d.getDate() + i);
+      elCal.appendChild(renderDayCell(d, true));
+    }
+
+    elStatsPill.textContent = planned === 0
+      ? "Monat: keine Workouts geplant"
+      : `Monat: ${done}/${planned} erledigt`;
+  }
+
+  function renderDayCell(d, dim){
+    const iso = fmtDateISO(d);
+    const workouts = getWorkoutsForDate(d);
+    const prog = dayProgress(iso);
+
+    const cell = document.createElement("div");
+    cell.className = "day" + (dim ? " dim":"");
+
+    if(sameDay(d, selectedDate)) cell.classList.add("sel");
+
+    const num = document.createElement("div");
+    num.className = "num";
+    const left = document.createElement("div");
+    left.textContent = d.getDate();
+
+    const right = document.createElement("div");
+    if(sameDay(d, new Date())) {
+      const dot = document.createElement("div");
+      dot.className = "today-dot";
+      right.appendChild(dot);
+    } else if(workouts.length>0){
+      // small progress dot via text
+      right.textContent = `${prog.done}/${prog.total}`;
+      right.style.color = "var(--muted)";
+      right.style.fontSize = "11px";
+      right.style.fontWeight = "800";
+    }
+
+    num.appendChild(left);
+    num.appendChild(right);
+
+    const badges = document.createElement("div");
+    badges.className = "badges";
+
+    workouts.slice(0,3).forEach(w=>{
+      const b = document.createElement("div");
+      const done = isDone(iso, w.id);
+      b.className = "badge " + (done ? "done" : "pending");
+      b.textContent = w.name;
+      badges.appendChild(b);
+    });
+
+    if(workouts.length>3){
+      const b = document.createElement("div");
+      b.className = "badge";
+      b.textContent = `+${workouts.length-3}`;
+      badges.appendChild(b);
+    }
+
+    cell.appendChild(num);
+    cell.appendChild(badges);
+
+    cell.addEventListener("click", () => {
+      selectedDate = d;
+      renderAll();
+    });
+
+    return cell;
+  }
+
+  function renderDayPanel(){
+    const iso = fmtDateISO(selectedDate);
+    elDayTitle.textContent = dayNameLong(selectedDate);
+
+    const workouts = getWorkoutsForDate(selectedDate);
+
+    elDayList.innerHTML = "";
+    if(workouts.length===0){
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.style.lineHeight = "1.4";
+      empty.innerHTML = `Für diesen Tag ist noch nichts geplant.<br/>Tippe auf <b>+ Zu Tag</b> oder plane über Wochentage/Einzeldaten.`;
+      elDayList.appendChild(empty);
+      btnMarkAll.disabled = true;
+      return;
+    }
+
+    btnMarkAll.disabled = false;
+
+    workouts.forEach(w=>{
+      const item = document.createElement("div");
+      item.className = "item";
+
+      const top = document.createElement("div");
+      top.className = "item-top";
+
+      const left = document.createElement("div");
+      const name = document.createElement("div");
+      name.className = "item-name";
+      name.textContent = w.name;
+
+      const desc = document.createElement("div");
+      desc.className = "item-desc";
+      desc.textContent = w.desc || "";
+
+      left.appendChild(name);
+      if(w.desc) left.appendChild(desc);
+
+      const right = document.createElement("div");
+      right.className = "item-actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "btn small";
+      editBtn.type = "button";
+      editBtn.textContent = "Bearbeiten";
+      editBtn.addEventListener("click", () => openEditor(w.id));
+
+      // checkbox
+      const doneWrap = document.createElement("label");
+      doneWrap.className = "check";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = isDone(iso, w.id);
+      cb.addEventListener("change", () => {
+        setDone(iso, w.id, cb.checked);
+        renderAll();
+      });
+
+      const cbText = document.createElement("span");
+      cbText.textContent = cb.checked ? "Erledigt" : "Offen";
+      cb.addEventListener("change", () => cbText.textContent = cb.checked ? "Erledigt" : "Offen");
+
+      doneWrap.appendChild(cb);
+      doneWrap.appendChild(cbText);
+
+      right.appendChild(doneWrap);
+      right.appendChild(editBtn);
+
+      top.appendChild(left);
+      top.appendChild(right);
+
+      item.appendChild(top);
+      elDayList.appendChild(item);
+    });
+  }
+
+  function showEditor(show){
+    dayPanel.classList.toggle("hidden", show);
+    editorPanel.classList.toggle("hidden", !show);
+  }
+
+  function renderWeekdayPicker(selected){
+    weekdayPicker.innerHTML = "";
+    DOW.forEach(d=>{
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "wbtn" + (selected.includes(d.i) ? " on":"");
+      b.textContent = d.short;
+      b.addEventListener("click", ()=>{
+        const idx = selected.indexOf(d.i);
+        if(idx>=0) selected.splice(idx,1);
+        else selected.push(d.i);
+        selected.sort((a,b)=>a-b);
+        renderWeekdayPicker(selected);
+      });
+      weekdayPicker.appendChild(b);
+    });
+  }
+
+  function renderDateChips(dates){
+    dateChips.innerHTML = "";
+    dates.sort();
+    dates.forEach(iso=>{
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "btn small";
+      chip.textContent = iso + " ✕";
+      chip.addEventListener("click", ()=>{
+        const i = dates.indexOf(iso);
+        if(i>=0) dates.splice(i,1);
+        renderDateChips(dates);
+      });
+      dateChips.appendChild(chip);
+    });
+  }
+
+  function openEditor(id=null){
+    editingId = id;
+    const w = id ? state.workouts.find(x=>x.id===id) : null;
+
+    const tempWeekdays = w ? [...(w.weekdays||[])] : [];
+    const tempDates = w ? [...(w.dates||[])] : [];
+
+    wName.value = w?.name || "";
+    wDesc.value = w?.desc || "";
+    renderWeekdayPicker(tempWeekdays);
+    renderDateChips(tempDates);
+
+    btnDelete.classList.toggle("hidden", !id);
+
+    // Hook: add date button uses tempDates
+    btnAddDate.onclick = () => {
+      const iso = wDateInput.value;
+      if(!iso) return;
+      if(!tempDates.includes(iso)) tempDates.push(iso);
+      wDateInput.value = "";
+      renderDateChips(tempDates);
+    };
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+
+      const name = wName.value.trim();
+      if(!name) return;
+
+      if(id){
+        w.name = name;
+        w.desc = wDesc.value.trim();
+        w.weekdays = [...tempWeekdays];
+        w.dates = [...tempDates];
+      } else {
+        state.workouts.push({
+          id: uid(),
+          name,
+          desc: wDesc.value.trim(),
+          weekdays: [...tempWeekdays],
+          dates: [...tempDates]
+        });
+      }
+
+      saveState();
+      showEditor(false);
+      renderAll();
+    };
+
+    btnDelete.onclick = () => {
+      if(!id) return;
+      // remove workout
+      state.workouts = state.workouts.filter(x=>x.id!==id);
+
+      // remove completions references
+      for(const day of Object.keys(state.completions)){
+        if(state.completions[day]?.[id]) delete state.completions[day][id];
+        if(state.completions[day] && Object.keys(state.completions[day]).length===0) delete state.completions[day];
+      }
+      // remove dayAdds references
+      for(const day of Object.keys(state.dayAdds)){
+        state.dayAdds[day] = (state.dayAdds[day]||[]).filter(x=>x!==id);
+        if(state.dayAdds[day].length===0) delete state.dayAdds[day];
+      }
+
+      saveState();
+      showEditor(false);
+      renderAll();
+    };
+
+    btnCancel.onclick = () => {
+      showEditor(false);
+      renderAll();
+    };
+
+    showEditor(true);
+  }
+
+  function addExistingWorkoutToSelectedDay(){
+    const iso = fmtDateISO(selectedDate);
+    if(state.workouts.length===0){
+      alert("Noch keine Workouts vorhanden. Erstelle zuerst eins über + Workout.");
+      return;
+    }
+    // simple prompt selection (mobile friendly enough)
+    const list = state.workouts
+      .slice()
+      .sort((a,b)=>a.name.localeCompare(b.name,"de"))
+      .map((w, i)=> `${i+1}: ${w.name}`)
+      .join("\n");
+
+    const answer = prompt(
+      `Welches Workout soll am ${iso} zusätzlich angezeigt werden?\n\n${list}\n\nGib die Nummer ein:`
+    );
+    if(!answer) return;
+    const idx = Number(answer) - 1;
+    if(Number.isNaN(idx) || idx < 0 || idx >= state.workouts.length) return;
+
+    const sorted = state.workouts.slice().sort((a,b)=>a.name.localeCompare(b.name,"de"));
+    const selected = sorted[idx];
+    if(!selected) return;
+
+    state.dayAdds[iso] ??= [];
+    if(!state.dayAdds[iso].includes(selected.id)){
+      state.dayAdds[iso].push(selected.id);
+      saveState();
+      renderAll();
+    }
+  }
+
+  function markAllDone(){
+    const iso = fmtDateISO(selectedDate);
+    const workouts = getWorkoutsForDate(selectedDate);
+    workouts.forEach(w => setDone(iso, w.id, true));
+    renderAll();
+  }
+
+  // ---------- Import / Export ----------
+  function exportData(){
+    const json = JSON.stringify(state, null, 2);
+    // Use share/download via Blob
+    const blob = new Blob([json], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `workout-planner-backup-${fmtDateISO(new Date())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(){
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if(!file) return;
+      const text = await file.text();
+      try{
+        const data = JSON.parse(text);
+        // basic validation
+        if(!data || typeof data !== "object") throw new Error("Ungültig");
+        data.workouts ??= [];
+        data.completions ??= {};
+        data.dayAdds ??= {};
+        state = data;
+        saveState();
+        renderAll();
+      }catch(e){
+        alert("Import fehlgeschlagen: Datei ist kein gültiges Backup.");
+      }
+    };
+    input.click();
+  }
+
+  // ---------- Events ----------
+  function shiftMonth(delta){
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth() + delta;
+    const maxDay = new Date(y, m + 1, 0).getDate();
+    const day = Math.min(selectedDate.getDate(), maxDay);
+    selectedDate = new Date(y, m, day);
+    viewDate = new Date(y, m, 1);
+    renderAll({syncViewToSelected:false});
+  }
+
+  btnPrev.addEventListener("click", () => shiftMonth(-1));
+  btnNext.addEventListener("click", () => shiftMonth(1));
+
+  btnNew.addEventListener("click", () => openEditor(null));
+  btnExport.addEventListener("click", exportData);
+  btnImport.addEventListener("click", importData);
+  btnMarkAll.addEventListener("click", markAllDone);
+  btnAddToDay.addEventListener("click", addExistingWorkoutToSelectedDay);
+
+  // Keyboard shortcuts (nice on desktop)
+  window.addEventListener("keydown", (e)=>{
+    if(e.key === "n" && (e.ctrlKey || e.metaKey)){
+      e.preventDefault();
+      openEditor(null);
+    }
+  });
+
+  // ---------- Render ----------
+  function renderAll({syncViewToSelected=true} = {}){
+    // Keep month in sync with selectedDate if user clicked dim days
+    if(syncViewToSelected){
+      viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    }
+
+    renderCalendar();
+    renderDayPanel();
+
+    // update selected highlight
+    [...elCal.querySelectorAll(".day")].forEach((node) => {
+      node.classList.remove("sel");
+      const n = node.querySelector(".num > div:first-child")?.textContent;
+      // Not reliable for dim days; ignore. We'll just re-render calendar anyway.
+    });
+  }
+
+  // init
+  renderDow();
+  renderAll();
+})();
+</script>
+</body>
+</html>
