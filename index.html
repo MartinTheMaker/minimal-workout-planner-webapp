@@ -303,18 +303,11 @@
             <p class="day-title" id="dayTitle">–</p>
           </div>
           <div class="row">
-            <button class="btn small ok" id="btnMarkAll">Alles erledigt</button>
-            <button class="btn small" id="btnAddToDay">+ Zu Tag</button>
           </div>
         </div>
         <div class="card-body">
           <div id="dayPanel">
             <div class="list" id="dayList"></div>
-            <div class="sep"></div>
-            <div class="footer-note">
-              <div><span class="kbd">+ Zu Tag</span> trägt ein bestehendes Workout nur für dieses Datum ein.</div>
-              <div><span class="kbd">Wochentage</span> planen wiederkehrend (z. B. Mo/Mi/Fr).</div>
-            </div>
           </div>
 
           <div id="editorPanel" class="hidden">
@@ -332,15 +325,6 @@
               <div>
                 <label>Wochentage (optional, wiederkehrend)</label>
                 <div class="weekday" id="weekdayPicker"></div>
-              </div>
-
-              <div>
-                <label for="wDates">Einzeldaten (optional, mehrere möglich)</label>
-                <div class="row" style="align-items:center">
-                  <input id="wDateInput" type="date" />
-                  <button class="btn small" type="button" id="btnAddDate">Datum hinzufügen</button>
-                </div>
-                <div class="row" id="dateChips"></div>
               </div>
 
               <div class="row" style="justify-content:space-between; margin-top:4px">
@@ -370,9 +354,9 @@
       return {
         workouts: [
           // Beispiel-Workouts (kannst du löschen)
-          { id: uid(), name: "Ganzkörper", desc: "3 Übungen • moderat", weekdays: [1,3,5], dates: [] },
-          { id: uid(), name: "LIT Cardio", desc: "Zone-2 • 30–45 min", weekdays: [2,4], dates: [] },
-          { id: uid(), name: "Mobility", desc: "10–15 min", weekdays: [0], dates: [] },
+          { id: uid(), name: "Ganzkörper", desc: "3 Übungen • moderat", weekdays: [1,3,5] },
+          { id: uid(), name: "LIT Cardio", desc: "Zone-2 • 30–45 min", weekdays: [2,4] },
+          { id: uid(), name: "Mobility", desc: "10–15 min", weekdays: [0] },
         ],
         // completions: { "YYYY-MM-DD": { "<workoutId>": true } }
         completions: {},
@@ -446,8 +430,6 @@
   const btnNew = document.getElementById("btnNew");
   const btnExport = document.getElementById("btnExport");
   const btnImport = document.getElementById("btnImport");
-  const btnMarkAll = document.getElementById("btnMarkAll");
-  const btnAddToDay = document.getElementById("btnAddToDay");
 
   const dayPanel = document.getElementById("dayPanel");
   const editorPanel = document.getElementById("editorPanel");
@@ -456,10 +438,6 @@
   const wName = document.getElementById("wName");
   const wDesc = document.getElementById("wDesc");
   const weekdayPicker = document.getElementById("weekdayPicker");
-
-  const wDateInput = document.getElementById("wDateInput");
-  const btnAddDate = document.getElementById("btnAddDate");
-  const dateChips = document.getElementById("dateChips");
 
   const btnCancel = document.getElementById("btnCancel");
   const btnDelete = document.getElementById("btnDelete");
@@ -482,12 +460,11 @@
     const iso = fmtDateISO(dateObj);
     const dow = dateObj.getDay(); // 0=Sun
     const byRecurring = state.workouts.filter(w => (w.weekdays||[]).includes(dow));
-    const byDates = state.workouts.filter(w => (w.dates||[]).includes(iso));
     const byDayAdds = (state.dayAdds[iso] || []).map(id => state.workouts.find(w => w.id===id)).filter(Boolean);
 
     // merge unique by id
     const map = new Map();
-    [...byRecurring, ...byDates, ...byDayAdds].forEach(w => map.set(w.id, w));
+    [...byRecurring, ...byDayAdds].forEach(w => map.set(w.id, w));
     return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,"de"));
   }
 
@@ -640,13 +617,10 @@
       const empty = document.createElement("div");
       empty.className = "muted";
       empty.style.lineHeight = "1.4";
-      empty.innerHTML = `Für diesen Tag ist noch nichts geplant.<br/>Tippe auf <b>+ Zu Tag</b> oder plane über Wochentage/Einzeldaten.`;
+      empty.innerHTML = `Für diesen Tag ist noch nichts geplant.<br/>Tippe auf <b>Workout hinzufügen</b> oder plane über Wochentage.`;
       elDayList.appendChild(empty);
-      btnMarkAll.disabled = true;
       return;
     }
-
-    btnMarkAll.disabled = false;
 
     workouts.forEach(w=>{
       const item = document.createElement("div");
@@ -728,45 +702,17 @@
     });
   }
 
-  function renderDateChips(dates){
-    dateChips.innerHTML = "";
-    dates.sort();
-    dates.forEach(iso=>{
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "btn small";
-      chip.textContent = iso + " ✕";
-      chip.addEventListener("click", ()=>{
-        const i = dates.indexOf(iso);
-        if(i>=0) dates.splice(i,1);
-        renderDateChips(dates);
-      });
-      dateChips.appendChild(chip);
-    });
-  }
-
   function openEditor(id=null){
     editingId = id;
     const w = id ? state.workouts.find(x=>x.id===id) : null;
 
     const tempWeekdays = w ? [...(w.weekdays||[])] : [];
-    const tempDates = w ? [...(w.dates||[])] : [];
 
     wName.value = w?.name || "";
     wDesc.value = w?.desc || "";
     renderWeekdayPicker(tempWeekdays);
-    renderDateChips(tempDates);
 
     btnDelete.classList.toggle("hidden", !id);
-
-    // Hook: add date button uses tempDates
-    btnAddDate.onclick = () => {
-      const iso = wDateInput.value;
-      if(!iso) return;
-      if(!tempDates.includes(iso)) tempDates.push(iso);
-      wDateInput.value = "";
-      renderDateChips(tempDates);
-    };
 
     form.onsubmit = (e) => {
       e.preventDefault();
@@ -778,14 +724,12 @@
         w.name = name;
         w.desc = wDesc.value.trim();
         w.weekdays = [...tempWeekdays];
-        w.dates = [...tempDates];
       } else {
         state.workouts.push({
           id: uid(),
           name,
           desc: wDesc.value.trim(),
           weekdays: [...tempWeekdays],
-          dates: [...tempDates]
         });
       }
 
@@ -821,45 +765,6 @@
     };
 
     showEditor(true);
-  }
-
-  function addExistingWorkoutToSelectedDay(){
-    const iso = fmtDateISO(selectedDate);
-    if(state.workouts.length===0){
-      alert("Noch keine Workouts vorhanden. Erstelle zuerst eins über + Workout.");
-      return;
-    }
-    // simple prompt selection (mobile friendly enough)
-    const list = state.workouts
-      .slice()
-      .sort((a,b)=>a.name.localeCompare(b.name,"de"))
-      .map((w, i)=> `${i+1}: ${w.name}`)
-      .join("\n");
-
-    const answer = prompt(
-      `Welches Workout soll am ${iso} zusätzlich angezeigt werden?\n\n${list}\n\nGib die Nummer ein:`
-    );
-    if(!answer) return;
-    const idx = Number(answer) - 1;
-    if(Number.isNaN(idx) || idx < 0 || idx >= state.workouts.length) return;
-
-    const sorted = state.workouts.slice().sort((a,b)=>a.name.localeCompare(b.name,"de"));
-    const selected = sorted[idx];
-    if(!selected) return;
-
-    state.dayAdds[iso] ??= [];
-    if(!state.dayAdds[iso].includes(selected.id)){
-      state.dayAdds[iso].push(selected.id);
-      saveState();
-      renderAll();
-    }
-  }
-
-  function markAllDone(){
-    const iso = fmtDateISO(selectedDate);
-    const workouts = getWorkoutsForDate(selectedDate);
-    workouts.forEach(w => setDone(iso, w.id, true));
-    renderAll();
   }
 
   // ---------- Import / Export ----------
@@ -919,8 +824,6 @@
   btnNew.addEventListener("click", () => openEditor(null));
   btnExport.addEventListener("click", exportData);
   btnImport.addEventListener("click", importData);
-  btnMarkAll.addEventListener("click", markAllDone);
-  btnAddToDay.addEventListener("click", addExistingWorkoutToSelectedDay);
 
   // Keyboard shortcuts (nice on desktop)
   window.addEventListener("keydown", (e)=>{
