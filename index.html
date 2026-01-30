@@ -4,6 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Workout Planner</title>
+  <link rel="icon" href="public/icons/favicon.ico" sizes="any">
+  <link rel="icon" href="public/icons/icon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="public/icons/icon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="apple-touch-icon" href="public/icons/icon-180x180.png" sizes="180x180">
+  <link rel="manifest" href="public/manifest.webmanifest">
+  <meta name="theme-color" content="#0b0f14">
   <style>
     :root{
       --bg:#0b0f14;
@@ -363,6 +369,13 @@
   </div>
 </main>
 
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("public/sw.js").catch(() => {});
+  });
+}
+</script>
 <script>
 (() => {
   // ---------- Storage ----------
